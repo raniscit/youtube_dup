@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken";
+import { deleteFromCloudinary } from "../utils/deleteFileOnCloud.js";
 
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -261,7 +262,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getcurrentUser = asyncHandler(async(req,res)=>{
     return res
     .status(200)
-    .json(200,req.user,"Current user fetched successfully")
+    .json(
+        new ApiResponse(200,req.user,"Current user fetched successfully")
+    )
 
 });
 
@@ -304,8 +307,18 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
         throw new ApiError(400,"Error while uploading avatar on cloudinary")
     }
 
+    if (req.user.avatar) {
+        const publicId = req.user.avatar
+            .split("/")
+            .pop()
+            .split(".")[0]; // extract public_id
+
+        await deleteFromCloudinary(publicId);
+    }
+
     req.user.avatar = cloudAvatar.url;
     await req.user.save({validateBeforeSave:false});
+
 
     return res
     .status(200)
@@ -328,6 +341,15 @@ const updateUserCoverImage = asyncHandler(async(req,res) => {
 
     if(!cloudAvatar?.url){
         throw new ApiError(400,"Error while uploading coverImage on cloudinary")
+    }
+
+    if (req.user.coverImage) {
+        const publicId = req.user.coverImage
+            .split("/")
+            .pop()
+            .split(".")[0]; // extract public_id
+
+        await deleteFromCloudinary(publicId);
     }
 
     req.user.coverImage = cloudAvatar.url;
