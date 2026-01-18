@@ -242,7 +242,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
     const user = await User.findById(req.user?._id)
     const isPasValid = await user.isPasswordCorrect(oldPassword)
-    if (isPasValid) {
+    if (!isPasValid) {
         throw new ApiError(400, "Password is incorrect")
     }
     if (newPassword !== confPassword) {
@@ -435,7 +435,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     return res
     .status(200)
     .json(
-        new ApiResponse(200,channe[0],"Fetched Data Successfully")
+        new ApiResponse(200,channel[0],"Fetched Data Successfully")
     )
 })
 

@@ -30,11 +30,11 @@ router.route("/logout").post(
 )
 
 router.route("/refreshToken").post(refreshAccessToken)
-router.route("./change-password").post(verifyJWT, changeCurrentPassword)
-router.route("./curr-user").get(verifyJWT, getcurrentUser)
-router.route("./update-details").patch(verifyJWT, updateAccountDetails)
-router.route("./update-avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
-router.route("./update-coverimage").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
+router.route("/change-password").post(verifyJWT, changeCurrentPassword)
+router.route("/curr-user").get(verifyJWT, getcurrentUser)
+router.route("/update-details").patch(verifyJWT, updateAccountDetails)
+router.route("/update-avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
+router.route("/update-coverimage").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
 router.route("/history").get(verifyJWT, getWatchHistory)
 
