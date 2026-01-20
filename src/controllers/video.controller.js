@@ -1,6 +1,5 @@
-import mongoose, { isValidObjectId } from "mongoose"
+import mongoose from "mongoose"
 import { Video } from "../models/video.model.js"
-import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
@@ -8,9 +7,66 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-    //TODO: get all videos based on query, sort, pagination
-})
+    let { page = 1, limit = 10, query, sortBy = "createdAt", sortType = "desc" } = req.query;
+    const { userId } = req.params;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+
+    const matchStage = {};
+
+    if (query) {
+        matchStage.$or = [
+            { title: { $regex: query, $options: "i" } },
+            { description: { $regex: query, $options: "i" } },
+        ];
+    }
+
+    if (userId) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new ApiError(400, "Invalid userId");
+        }
+        matchStage.owner = new mongoose.Types.ObjectId(userId);
+    }
+
+    // Allowed sorting fields for safety
+    const allowedSortFields = ["createdAt", "views", "title"];
+    if (!allowedSortFields.includes(sortBy)) {
+        sortBy = "createdAt";
+    }
+
+    const sortOrder = sortType.toLowerCase() === "asc" ? 1 : -1;
+
+    const aggregationPipeline = [
+        { $match: matchStage },
+        { $sort: { [sortBy]: sortOrder } },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+    ];
+
+    // To get total count ignoring pagination:
+    const countPipeline = [{ $match: matchStage }, { $count: "total" }];
+
+    // Run both pipelines in parallel
+    const [videos, countResult] = await Promise.all([
+        Video.aggregate(aggregationPipeline),
+        Video.aggregate(countPipeline),
+    ]);
+
+    const totalVideos = countResult[0]?.total || 0;
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            total: totalVideos,
+            page,
+            limit,
+            videos,
+        }, "Videos fetched successfully")
+    );
+});
+
 
 const publishAVideo = asyncHandler(async (req, res) => {
     const { title, description } = req.body
@@ -164,7 +220,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(
-            new ApiResponse(200,  {isPublished: video.isPublished }, "Publish status successfully toggled")
+            new ApiResponse(200, { isPublished: video.isPublished }, "Publish status successfully toggled")
         )
 })
 
