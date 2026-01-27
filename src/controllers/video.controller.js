@@ -5,6 +5,21 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
+const getPublicVideos = asyncHandler(async (req, res) => {
+  const videos = await Video.find({
+    isPublished: true
+  })
+  .populate("owner", "username avatar")
+  .sort({ createdAt: -1 }) // or random
+  .limit(20);
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200,videos,"Successfully fetched public videos")
+  )
+});
+
 
 const getAllVideos = asyncHandler(async (req, res) => {
     let { page = 1, limit = 10, query, sortBy = "createdAt", sortType = "desc" } = req.query;
@@ -224,11 +239,48 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         )
 })
 
+
+const searchVideos = asyncHandler(async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
+    const videos = await Video.find(
+      {
+        $text: { $search: q },
+        isPublished: true
+      },
+      { score: { $meta: "textScore" } }
+    )
+      .sort({ score: { $meta: "textScore" }, views: -1 })
+      .limit(20);
+
+    res.status(200).json({
+      success: true,
+      data: videos
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Search failed"
+    });
+  }
+});
+
+
 export {
     getAllVideos,
     publishAVideo,
     getVideoById,
     updateVideo,
     deleteVideo,
-    togglePublishStatus
+    togglePublishStatus,
+    getPublicVideos,
+    searchVideos
 }
