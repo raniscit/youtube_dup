@@ -9,7 +9,7 @@ import { getAllVideos,
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { searchVideos } from "../controllers/video.controller.js";
-
+import { optionalAuth } from "../middlewares/optionalAuth.middleware.js";
 const router = Router()
 
 
@@ -27,7 +27,7 @@ router.route("/publishvideos").post(upload.fields([
 ]),verifyJWT,publishAVideo);
 
 
-router.route("/get-video/:videoId").get(getVideoById);
+router.route("/get-video/:videoId").get(optionalAuth,getVideoById);
 router.route("/update-video/:videoId").patch(
     upload.fields([
         { name: "thumbnail", maxCount: 1 }

@@ -131,22 +131,48 @@ const publishAVideo = asyncHandler(async (req, res) => {
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
-    //TODO: get video by id
+  const { videoId } = req.params;
 
-    const video = await Video.findById(videoId)
-        .populate("owner", "username avatar");
+  const video = await Video.findById(videoId)
+    .populate("owner", "_id username avatar");
 
-    if (!video) {
-        throw new ApiError(404, "Video not found")
-    }
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
 
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, video, "Video fetched successfully")
-        )
-})
+  // ✅ SAFE likes handling
+  const likesArray = Array.isArray(video.likes) ? video.likes : [];
+  const likesCount = likesArray.length;
+
+  let isLikedByUser = false;
+  if (req.user) {
+    isLikedByUser = likesArray.some(
+      (id) => id.toString() === req.user._id.toString()
+    );
+  }
+
+  // ✅ RESPONSE MATCHES WATCH PAGE
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        _id: video._id,
+        title: video.title,
+        description: video.description,
+        videoFile: video.videoFile,
+        owner: {
+          _id: video.owner._id,
+          username: video.owner.username,
+          avatar: video.owner.avatar,
+        },
+        likesCount,
+        isLikedByUser,
+      },
+      "Video fetched successfully"
+    )
+  );
+});
+
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
@@ -268,10 +294,7 @@ const searchVideos = asyncHandler(async (req, res) => {
             data: videos
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Search failed"
-        });
+        res.status(500).json(new ApiResponse(500,{},"Search failed"));
     }
 });
 
