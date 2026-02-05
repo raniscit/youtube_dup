@@ -8,37 +8,53 @@ import { Comment } from "../models/comment.model.js";
 import { Tweet } from "../models/tweet.model.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
-    const {videoId} = req.params
-    //TODO: toggle like on video
-    const video = await Video.findById(videoId)
-    if(!video){
-        throw new ApiError(404,"Video not found")
-    }
+  const { videoId } = req.params;
 
-    const val = await Like.findOne({
-        video: videoId,
-        likedBy: req.user._id
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  // Check if user already liked the video
+  const existingLike = await Like.findOne({
+    video: videoId,
+    likedBy: req.user._id,
+  });
+
+  if (!existingLike) {
+    // Add like
+    await Like.create({
+      video: videoId,
+      likedBy: req.user._id,
     });
-    if(!val){
-        await Like.create({
-            video: videoId,
-            likedBy: req.user._id
-        })
 
-        return res
-        .status(201)
-        .json(
-            new ApiResponse(201,{ liked: true },"Like toggled successfully")
-        )
-    }
+    // Get updated likes count
+    const likesCount = await Like.countDocuments({ video: videoId });
 
-    await Like.deleteOne({_id: val._id});
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200,{ liked: false },"Like toggled successfully")
-        )
-})
+    return res.status(201).json(
+      new ApiResponse(
+        201,
+        { liked: true, likesCount },
+        "Like toggled successfully"
+      )
+    );
+  }
+
+  // Remove like (unlike)
+  await Like.deleteOne({ _id: existingLike._id });
+
+  // Get updated likes count
+  const likesCount = await Like.countDocuments({ video: videoId });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      { liked: false, likesCount },
+      "Like toggled successfully"
+    )
+  );
+});
+
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
     const {commentId} = req.params

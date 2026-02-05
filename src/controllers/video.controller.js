@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { Like } from "../models/like.model.js"
 
 const getPublicVideos = asyncHandler(async (req, res) => {
     const videos = await Video.find({
@@ -140,18 +141,20 @@ const getVideoById = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found");
   }
 
-  // ✅ SAFE likes handling
-  const likesArray = Array.isArray(video.likes) ? video.likes : [];
-  const likesCount = likesArray.length;
+  // ✅ READ likes from Like collection (SOURCE OF TRUTH)
+  const likesCount = await Like.countDocuments({ video: videoId });
 
   let isLikedByUser = false;
+
   if (req.user) {
-    isLikedByUser = likesArray.some(
-      (id) => id.toString() === req.user._id.toString()
-    );
+    const liked = await Like.findOne({
+      video: videoId,
+      likedBy: req.user._id,
+    });
+
+    isLikedByUser = !!liked;
   }
 
-  // ✅ RESPONSE MATCHES WATCH PAGE
   return res.status(200).json(
     new ApiResponse(
       200,
