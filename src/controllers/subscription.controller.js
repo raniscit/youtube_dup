@@ -89,42 +89,40 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-    const subscriberId = req.user._id;
-    
-    const channelList = await Subscription.aggregate([
-        {
-            $match:{
-                subscriber:new mongoose.Types.ObjectId(subscriberId)
-            }
-        },
-        {
-            $lookup:{
-                from:"users",
-                localField:"channel",
-                foreignField:"_id",
-                as:"channel"
-            }
-        },
-        {
-            $unwind:"$channel"
-        },
-        {
-            $project:{
-                "channel.username":1,
-                "channel.fullname":1,
-                "channel.avatar":1,
-                channel:1,
-                createdAt: 1,
-            }
-        }
-    ]);
+  const subscriberId = req.user._id;
 
-    return res
+  const channelList = await Subscription.aggregate([
+    {
+      $match: {
+        subscriber: new mongoose.Types.ObjectId(subscriberId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "channel",
+        foreignField: "_id",
+        as: "channel",
+      },
+    },
+    {
+      $unwind: "$channel",
+    },
+    {
+      $project: {
+        "channel.username": 1,
+        "channel.fullname": 1,
+        "channel.avatar": 1,
+        createdAt: 1,
+      },
+    },
+  ]);
+
+  return res
     .status(200)
-    .json(
-        new ApiResponse(200,channelList,"Channel fetched successfully")
-    );
-})
+    .json(new ApiResponse(200, channelList, "Channel fetched successfully"));
+});
+
 
 export {
     toggleSubscription,
