@@ -54,78 +54,95 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 
     const SubscriberList = await Subscription.aggregate([
         {
-            $match:{
-                channel:new mongoose.Types.ObjectId(channelId)
+            $match: {
+                channel: new mongoose.Types.ObjectId(channelId)
             }
         },
         {
-            $lookup:{
-                from:"users",
-                localField:"subscriber",
-                foreignField:"_id",
-                as:"Subscriber"
+            $lookup: {
+                from: "users",
+                localField: "subscriber",
+                foreignField: "_id",
+                as: "Subscriber"
             }
         },
         {
-            $unwind:"$Subscriber"
+            $unwind: "$Subscriber"
         },
         {
-            $project:{
-                "Subscriber.username":1,
-                "Subscriber.fullname":1,
-                "Subscriber.avatar":1,
-                channel:1,
+            $project: {
+                "Subscriber.username": 1,
+                "Subscriber.fullname": 1,
+                "Subscriber.avatar": 1,
+                channel: 1,
                 createdAt: 1,
             }
         }
     ]);
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200,SubscriberList,"Subscribers fetched successfully")
-    );
+        .status(200)
+        .json(
+            new ApiResponse(200, SubscriberList, "Subscribers fetched successfully")
+        );
 })
 
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-  const subscriberId = req.user._id;
+    const subscriberId = req.user._id;
 
-  const channelList = await Subscription.aggregate([
-    {
-      $match: {
-        subscriber: new mongoose.Types.ObjectId(subscriberId),
-      },
-    },
-    {
-      $lookup: {
-        from: "users",
-        localField: "channel",
-        foreignField: "_id",
-        as: "channel",
-      },
-    },
-    {
-      $unwind: "$channel",
-    },
-    {
-      $project: {
-        "channel.username": 1,
-        "channel.fullname": 1,
-        "channel.avatar": 1,
-        createdAt: 1,
-      },
-    },
-  ]);
+    const channelList = await Subscription.aggregate([
+        {
+            $match: {
+                subscriber: new mongoose.Types.ObjectId(subscriberId),
+            },
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "channel",
+                foreignField: "_id",
+                as: "channel",
+            },
+        },
+        {
+            $unwind: "$channel",
+        },
+        {
+            $project: {
+                "channel._id": 1,
+                "channel.username": 1,
+                "channel.fullname": 1,
+                "channel.avatar": 1,
+                createdAt: 1,
+            },
+        }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, channelList, "Channel fetched successfully"));
+    ]);
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, channelList, "Channel fetched successfully"));
 });
+
+// Get subscriber count of a channel
+const getSubscriberCount = asyncHandler(async (req, res) => {
+  const { channelId } = req.params;
+
+  const count = await Subscription.countDocuments({
+    channel: channelId,
+  });
+
+  return res.status(200).json(
+    new ApiResponse(200, { subscriberCount: count }, "Subscriber count fetched successfully")
+  );
+});
+
 
 
 export {
     toggleSubscription,
     getUserChannelSubscribers,
-    getSubscribedChannels
+    getSubscribedChannels,
+    getSubscriberCount
 }
