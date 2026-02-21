@@ -7,6 +7,7 @@ import { Video } from "../models/video.model.js"
 
 const createPlaylist = asyncHandler(async (req, res) => {
     const { name, description } = req.body;
+    console.log("Create playlist hit at:", new Date().toISOString());
 
     if (!name || !description) {
         throw new ApiError(400, "Name and description both fields are required");
@@ -26,39 +27,49 @@ const createPlaylist = asyncHandler(async (req, res) => {
 
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
-    const { userId } = req.params
-    //TODO: get user playlists
+    const { userId } = req.params;
 
     if (!isValidObjectId(userId)) {
         throw new ApiError(400, "Invalid user id");
     }
 
-    const playlists = await Playlist.find({ owner: userId });
+    const playlists = await Playlist.find({ owner: userId })
+        .populate({
+            path: "videos",
+            select: "thumbnail title"
+        })
+        .sort({ createdAt: -1 });
 
     return res.status(200).json(
         new ApiResponse(200, playlists, "Playlists fetched successfully")
     );
-})
+});
 
 const getPlaylistById = asyncHandler(async (req, res) => {
-    const { playlistId } = req.params
-    //TODO: get playlist by id
+    const { playlistId } = req.params;
 
     if (!isValidObjectId(playlistId)) {
         throw new ApiError(400, "Invalid playlist id");
     }
 
     const playlist = await Playlist.findById(playlistId)
+        .populate({
+            path: "videos",
+            select: "title thumbnail videoUrl duration"
+        })
+        .populate({
+            path: "owner",
+            select: "username avatar"
+        });
+
     if (!playlist) {
-        throw new ApiError(404, "Playlist does not exists");
+        throw new ApiError(404, "Playlist does not exist");
     }
 
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, playlist, "Playlist fetched successfully")
-        )
-})
+    return res.status(200).json(
+        new ApiResponse(200, playlist, "Playlist fetched successfully")
+    );
+});
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
     const { playlistId, videoId } = req.params
@@ -165,6 +176,8 @@ const updatePlaylist = asyncHandler(async (req, res) => {
 
     if (name) updateData.name = name;
     if (description) updateData.description = description;
+    console.log("Playlist ID:", playlistId);
+    console.log("Logged in user:", req.user._id);
 
     const updatedData = await Playlist.findOneAndUpdate(
         { _id: playlistId, owner: req.user._id },

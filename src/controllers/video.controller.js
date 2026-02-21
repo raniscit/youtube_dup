@@ -83,6 +83,24 @@ const getAllVideos = asyncHandler(async (req, res) => {
     );
 });
 
+const incrementView = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+
+    const video = await Video.findByIdAndUpdate(
+        videoId,
+        { $inc: { views: 1 } },  // increment by 1
+        { new: true }
+    );
+
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, { views: video.views }, "View incremented")
+    );
+});
+
 
 const publishAVideo = asyncHandler(async (req, res) => {
     const { title, description } = req.body
@@ -132,48 +150,48 @@ const publishAVideo = asyncHandler(async (req, res) => {
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
+    const { videoId } = req.params;
 
-  const video = await Video.findById(videoId)
-    .populate("owner", "_id username avatar");
+    const video = await Video.findById(videoId)
+        .populate("owner", "_id username avatar");
 
-  if (!video) {
-    throw new ApiError(404, "Video not found");
-  }
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
 
-  // ✅ READ likes from Like collection (SOURCE OF TRUTH)
-  const likesCount = await Like.countDocuments({ video: videoId });
+    // ✅ READ likes from Like collection (SOURCE OF TRUTH)
+    const likesCount = await Like.countDocuments({ video: videoId });
 
-  let isLikedByUser = false;
+    let isLikedByUser = false;
 
-  if (req.user) {
-    const liked = await Like.findOne({
-      video: videoId,
-      likedBy: req.user._id,
-    });
+    if (req.user) {
+        const liked = await Like.findOne({
+            video: videoId,
+            likedBy: req.user._id,
+        });
 
-    isLikedByUser = !!liked;
-  }
+        isLikedByUser = !!liked;
+    }
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        _id: video._id,
-        title: video.title,
-        description: video.description,
-        videoFile: video.videoFile,
-        owner: {
-          _id: video.owner._id,
-          username: video.owner.username,
-          avatar: video.owner.avatar,
-        },
-        likesCount,
-        isLikedByUser,
-      },
-      "Video fetched successfully"
-    )
-  );
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                _id: video._id,
+                title: video.title,
+                description: video.description,
+                videoFile: video.videoFile,
+                owner: {
+                    _id: video.owner._id,
+                    username: video.owner.username,
+                    avatar: video.owner.avatar,
+                },
+                likesCount,
+                isLikedByUser,
+            },
+            "Video fetched successfully"
+        )
+    );
 });
 
 
@@ -297,7 +315,7 @@ const searchVideos = asyncHandler(async (req, res) => {
             data: videos
         });
     } catch (error) {
-        res.status(500).json(new ApiResponse(500,{},"Search failed"));
+        res.status(500).json(new ApiResponse(500, {}, "Search failed"));
     }
 });
 
@@ -310,5 +328,6 @@ export {
     deleteVideo,
     togglePublishStatus,
     getPublicVideos,
-    searchVideos
+    searchVideos,
+    incrementView
 }
