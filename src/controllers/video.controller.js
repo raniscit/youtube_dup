@@ -290,33 +290,40 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 
 
 const searchVideos = asyncHandler(async (req, res) => {
-    try {
-        const { q } = req.query;
+    const { q } = req.query;
 
-        if (!q) {
-            return res.status(200).json({
-                success: true,
-                data: []
-            });
-        }
+    // 🔹 Trim and validate query
+    const searchQuery = q?.trim();
 
-        const videos = await Video.find(
-            {
-                $text: { $search: q },
-                isPublished: true
-            },
-            { score: { $meta: "textScore" } }
-        )
-            .sort({ score: { $meta: "textScore" }, views: -1 })
-            .limit(20);
-
-        res.status(200).json({
-            success: true,
-            data: videos
-        });
-    } catch (error) {
-        res.status(500).json(new ApiResponse(500, {}, "Search failed"));
+    if (!searchQuery) {
+        return res.status(200).json(
+            new ApiResponse(200, [], "No search query provided")
+        );
     }
+
+    const videos = await Video.find(
+        {
+            $text: { $search: searchQuery },
+            isPublished: true
+        },
+        {
+            score: { $meta: "textScore" }
+        }
+    )
+        .sort({
+            score: { $meta: "textScore" },
+            views: -1
+        })
+        .limit(20)
+        .populate({
+            path: "owner",
+            select: "username avatar"
+        })
+        .select("title description thumbnail duration views owner");
+
+    return res.status(200).json(
+        new ApiResponse(200, videos, "Search results fetched successfully")
+    );
 });
 
 
