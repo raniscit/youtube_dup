@@ -151,8 +151,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production"
-    }
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",  // important for localhost
+    };
 
     return res
         .status(200)
@@ -162,11 +163,11 @@ const loginUser = asyncHandler(async (req, res) => {
             new ApiResponse(
                 200,
                 {
-                    user: logedinUser, accessToken, refreshToken
+                    user: logedinUser
                 },
                 "User logged in successfully"
             )
-        )
+        );
 })
 
 
@@ -186,7 +187,8 @@ const logoutUser = asyncHandler(async (req, res) => {    //if res not used then 
 
     const options = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production"
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax"
     }
 
     return res
@@ -219,7 +221,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         const options = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax"
         }
 
         const {
@@ -282,7 +285,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
                 email
             }
         },
-        { new: true } 
+        { new: true }
     ).select("-password -refreshToken")
 
     return res
@@ -428,52 +431,52 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     console.log(channel);
 
 
-    if(!channel?.length){
-        throw new ApiError(404,"Channel does not exists");
+    if (!channel?.length) {
+        throw new ApiError(404, "Channel does not exists");
     }
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200,channel[0],"Fetched Data Successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, channel[0], "Fetched Data Successfully")
+        )
 })
 
-const getWatchHistory = asyncHandler(async(req,res) => {
+const getWatchHistory = asyncHandler(async (req, res) => {
     const user = await User.aggregate([
         {
-            $match:{
+            $match: {
                 _id: new mongoose.Types.ObjectId(req.user._id)
             }
         },
         {
-            $lookup:{
-                from: "video",
-                localField:"watchHistory",
-                foreignField:"_id",
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
                 as: "watchHistory",
-                pipeline:[
+                pipeline: [
                     {
-                        $lookup:{
-                            from:"users",
-                            localField:"owner",
-                            foreignField:"_id",
-                            as:"owner",
-                            pipeline:[
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
                                 {
-                                    $project:{
-                                        fullname:1,
-                                        username:1,
-                                        avatar:1
+                                    $project: {
+                                        fullname: 1,
+                                        username: 1,
+                                        avatar: 1
                                     }
                                 }
                             ]
                         }
                     },
                     {
-                        $addFields:{
-                            owner:{
-                                $first:"$owner"
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"
                             }
                         }
                     }
@@ -483,9 +486,9 @@ const getWatchHistory = asyncHandler(async(req,res) => {
     ])
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200,user[0].watchHistory,"Watch history fetched successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully")
+        )
 })
-export {getWatchHistory, getUserChannelProfile, registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getcurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage }
+export { getWatchHistory, getUserChannelProfile, registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getcurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage }

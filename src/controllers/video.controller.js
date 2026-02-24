@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { Like } from "../models/like.model.js"
+import { User } from "../models/user.model.js"
 
 const getPublicVideos = asyncHandler(async (req, res) => {
     const videos = await Video.find({
@@ -157,6 +158,16 @@ const getVideoById = asyncHandler(async (req, res) => {
 
     if (!video) {
         throw new ApiError(404, "Video not found");
+    }
+
+    // ✅ Add to watch history (ONLY if user is logged in)
+    if (req.user) {
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $addToSet: { watchHistory: video._id } // prevents duplicates
+            }
+        );
     }
 
     // ✅ READ likes from Like collection (SOURCE OF TRUTH)
