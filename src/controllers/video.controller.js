@@ -6,6 +6,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { Like } from "../models/like.model.js"
 import { User } from "../models/user.model.js"
+import { deleteFromCloudinary } from "../utils/deleteFileOnCloud.js"
 
 const getPublicVideos = asyncHandler(async (req, res) => {
     const videos = await Video.find({
@@ -257,8 +258,7 @@ const updateVideo = asyncHandler(async (req, res) => {
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
-    //TODO: delete video
+    const { videoId } = req.params;
 
     const video = await Video.findById(videoId);
 
@@ -266,16 +266,47 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found");
     }
 
+    // 🔐 Only owner can delete
     if (video.owner.toString() !== req.user._id.toString()) {
         throw new ApiError(403, "You are not allowed to delete this video");
     }
 
-    await Video.findByIdAndDelete(videoId);
+    // 🧹 Delete video file from Cloudinary
+    if (video.videoFile) {
+        const publicId = video.videoFile
+            .split("/")
+            .pop()
+            .split(".")[0];
+
+        await deleteFromCloudinary(publicId, "video");
+    }
+
+    // 🧹 Delete thumbnail if exists
+    if (video.thumbnail) {
+        const thumbPublicId = video.thumbnail
+            .split("/")
+            .pop()
+            .split(".")[0];
+
+        await deleteFromCloudinary(thumbPublicId);
+    }
+
+    // 🧹 Remove video from all users' watchHistory
+    await User.updateMany(
+        { watchHistory: video._id },
+        { $pull: { watchHistory: video._id } }
+    );
+
+    // 🧹 Delete related likes
+    await Like.deleteMany({ video: video._id });
+
+    // 🧹 Delete video document
+    await video.deleteOne();
 
     return res.status(200).json(
-        new ApiResponse(200, video, "Video deleted successfully")
+        new ApiResponse(200, {}, "Video deleted successfully")
     );
-})
+});
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
@@ -287,7 +318,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     }
 
     if (video.owner.toString() !== req.user._id.toString()) {
-        throw new ApiError(403, "You are not allowed to delete this video");
+        throw new ApiError(403, "You are not allowed to change publish status.");
     }
 
     video.isPublished = !video.isPublished;
@@ -336,6 +367,7 @@ const searchVideos = asyncHandler(async (req, res) => {
         new ApiResponse(200, videos, "Search results fetched successfully")
     );
 });
+
 
 
 export {
